@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "spotinfer"
+version = "0.1.0"
+description = "A simple Python package for inference tasks"
+authors = ["Tymon Żarski <tymon.zarski@gmail.com>"]
+readme = "README.md"
+packages = [{include = "spotinfer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+datacrunch = "^1.14.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+spotinfer = "spotinfer.main:main"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=4.3.0,<5.0.0"
+pytest = ">=8.4.2,<9.0.0"
+build = ">=1.0.0,<2.0.0"
+twine = ">=4.0.0,<5.0.0"

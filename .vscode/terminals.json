@@ -1,0 +1,11 @@
+{
+  "autorun": false,
+  "terminals": [
+    {
+      "name": "Poetry",
+      "description": "Poetry terminal",
+      "focus": true,
+      "command": "eval \"$(poetry env activate)\""
+    }
+  ]
+}
