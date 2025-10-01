@@ -8,6 +8,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: debug-statements
+      - id: check-merge-conflict
   - repo: https://github.com/psf/black
     rev: 25.9.0
     hooks:
@@ -36,6 +37,11 @@ repos:
   #     - id: mypy
   - repo: local
     hooks:
+      - id: pylint
+        name: pylint
+        entry: poetry run pylint --max-module-lines=300
+        language: system
+        types: [python]
       - id: tox
         name: tox
         entry: poetry run tox

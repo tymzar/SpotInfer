@@ -20,9 +20,7 @@ class TestInstanceSelectionService:
     def test_list_all_offers(self, mock_instance_types):
         """Test listing all offers."""
         with patch("spotinfer.prepare.offers.DatacrunchAdapter") as mock_adapter:
-            mock_adapter.return_value.get_instance_types.return_value = (
-                mock_instance_types
-            )
+            mock_adapter.return_value.get_instance_types.return_value = mock_instance_types
 
             service = InstanceSelectionService()
             result = service.list_all_offers()
@@ -33,9 +31,7 @@ class TestInstanceSelectionService:
     def test_list_spot_offers(self, mock_instance_types):
         """Test listing spot offers."""
         with patch("spotinfer.prepare.offers.DatacrunchAdapter") as mock_adapter:
-            mock_adapter.return_value.get_spot_instance_types.return_value = (
-                mock_instance_types
-            )
+            mock_adapter.return_value.get_spot_instance_types.return_value = mock_instance_types
 
             service = InstanceSelectionService()
             result = service.list_spot_offers()
@@ -46,11 +42,7 @@ class TestInstanceSelectionService:
     def test_filter_by_gpu_type(self, mock_instance_types):
         """Test filtering by GPU type."""
         with patch("spotinfer.prepare.offers.DatacrunchAdapter") as mock_adapter:
-            a100_instances = [
-                inst
-                for inst in mock_instance_types
-                if "A100" in inst.gpu["description"]
-            ]
+            a100_instances = [inst for inst in mock_instance_types if "A100" in inst.gpu["description"]]
             mock_adapter.return_value.filter_by_gpu_type.return_value = a100_instances
 
             service = InstanceSelectionService()
@@ -69,9 +61,7 @@ class TestInstanceSelectionService:
             result = service.get_cheapest_offer()
 
             assert result == cheapest
-            mock_adapter.return_value.get_cheapest_offer.assert_called_once_with(
-                None, False
-            )
+            mock_adapter.return_value.get_cheapest_offer.assert_called_once_with(None, False)
 
     def test_get_cheapest_offer_with_params(self, mock_instance_types):
         """Test getting cheapest offer with parameters."""
@@ -83,9 +73,7 @@ class TestInstanceSelectionService:
             result = service.get_cheapest_offer(gpu_type="A100", spot=True)
 
             assert result == cheapest
-            mock_adapter.return_value.get_cheapest_offer.assert_called_once_with(
-                "A100", True
-            )
+            mock_adapter.return_value.get_cheapest_offer.assert_called_once_with("A100", True)
 
     def test_get_available_gpu_types(self):
         """Test getting available GPU types."""
@@ -117,11 +105,7 @@ class TestListOffersFunction:
     def test_list_offers_with_gpu_type(self, mock_instance_types):
         """Test listing offers with GPU type filter."""
         with patch("spotinfer.prepare.offers.InstanceSelectionService") as mock_service:
-            a100_instances = [
-                inst
-                for inst in mock_instance_types
-                if "A100" in inst.gpu["description"]
-            ]
+            a100_instances = [inst for inst in mock_instance_types if "A100" in inst.gpu["description"]]
             mock_service.return_value.filter_by_gpu_type.return_value = a100_instances
 
             result = list_offers(gpu_type="A100")
@@ -133,9 +117,7 @@ class TestListOffersFunction:
     def test_list_offers_spot_only(self, mock_instance_types):
         """Test listing spot offers only."""
         with patch("spotinfer.prepare.offers.InstanceSelectionService") as mock_service:
-            mock_service.return_value.list_spot_offers.return_value = (
-                mock_instance_types
-            )
+            mock_service.return_value.list_spot_offers.return_value = mock_instance_types
 
             result = list_offers(spot_only=True)
 
@@ -153,9 +135,7 @@ class TestListOffersFunction:
 
             assert result == [cheapest]
             mock_service.assert_called_once_with(client_id=None, client_secret=None)
-            mock_service.return_value.get_cheapest_offer.assert_called_once_with(
-                gpu_type=None, spot=False
-            )
+            mock_service.return_value.get_cheapest_offer.assert_called_once_with(gpu_type=None, spot=False)
 
     def test_list_offers_cheapest_only_with_gpu_type(self, mock_instance_types):
         """Test listing cheapest offer with GPU type filter."""
@@ -167,9 +147,7 @@ class TestListOffersFunction:
 
             assert result == [cheapest]
             mock_service.assert_called_once_with(client_id=None, client_secret=None)
-            mock_service.return_value.get_cheapest_offer.assert_called_once_with(
-                gpu_type="A100", spot=True
-            )
+            mock_service.return_value.get_cheapest_offer.assert_called_once_with(gpu_type="A100", spot=True)
 
     def test_list_offers_cheapest_only_no_offer(self):
         """Test listing cheapest offer when no offer available."""
@@ -180,9 +158,7 @@ class TestListOffersFunction:
 
             assert result == []
             mock_service.assert_called_once_with(client_id=None, client_secret=None)
-            mock_service.return_value.get_cheapest_offer.assert_called_once_with(
-                gpu_type=None, spot=False
-            )
+            mock_service.return_value.get_cheapest_offer.assert_called_once_with(gpu_type=None, spot=False)
 
     def test_list_offers_with_credentials(self, mock_instance_types):
         """Test listing offers with custom credentials."""
@@ -192,9 +168,7 @@ class TestListOffersFunction:
             result = list_offers(client_id="custom_id", client_secret="custom_secret")
 
             assert result == mock_instance_types
-            mock_service.assert_called_once_with(
-                client_id="custom_id", client_secret="custom_secret"
-            )
+            mock_service.assert_called_once_with(client_id="custom_id", client_secret="custom_secret")
             mock_service.return_value.list_all_offers.assert_called_once()
 
 

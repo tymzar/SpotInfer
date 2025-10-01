@@ -4,6 +4,7 @@ SpotInfer - Interactive Mode.
 Interactive CLI mode for guided instance selection and job setup.
 """
 
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -15,6 +16,7 @@ from rich.prompt import IntPrompt, Prompt
 from rich.table import Table
 
 from ..prepare.offers import InstanceSelectionService
+from ..utils.gpu import format_gpu_display
 
 app = typer.Typer(name="interactive", help="Interactive mode for guided setup")
 console = Console()
@@ -29,6 +31,13 @@ class InteractiveContext:
         self.gpu_requirements: Optional[str] = None
         self.budget_limit: Optional[float] = None
 
+    def reset(self):
+        """Reset all context values to None."""
+        self.input_file = None
+        self.selected_instance = None
+        self.gpu_requirements = None
+        self.budget_limit = None
+
 
 def get_arrow_key_input(options: List[str], prompt: str = "Select an option") -> str:
     """Get user input using inquirer for arrow key navigation."""
@@ -36,7 +45,6 @@ def get_arrow_key_input(options: List[str], prompt: str = "Select an option") ->
         return ""
 
     # Check if we're in an interactive terminal
-    import sys
 
     if not sys.stdin.isatty():
         # Fallback to numbered selection for non-interactive environments
@@ -55,24 +63,19 @@ def get_arrow_key_input(options: List[str], prompt: str = "Select an option") ->
         return selected
 
     try:
-        questions = [
-            inquirer.List("choice", message=prompt, choices=options, carousel=True)
-        ]
+        questions = [inquirer.List("choice", message=prompt, choices=options, carousel=True)]
 
         answers = inquirer.prompt(questions)
         if answers:
             selected = answers["choice"]
             console.print(f"[green]✓ Selected: {selected}[/green]")
             return selected
-        else:
-            # User cancelled (Ctrl+C)
-            raise typer.Exit(1)
+        # User cancelled (Ctrl+C)
+        raise typer.Exit(1)
 
     except Exception:
         # Fallback to numbered selection if inquirer fails
-        console.print(
-            "[yellow]Warning: Interactive selection failed, using fallback[/yellow]"
-        )
+        console.print("[yellow]Warning: Interactive selection failed, using fallback[/yellow]")
         console.print(f"\n{prompt}:")
         for i, option in enumerate(options, 1):
             console.print(f"  {i}. {option}")
@@ -90,12 +93,8 @@ def get_arrow_key_input(options: List[str], prompt: str = "Select an option") ->
 
 @app.command()
 def run(
-    client_id: Optional[str] = typer.Option(
-        None, "--client-id", help="Datacrunch client ID"
-    ),
-    client_secret: Optional[str] = typer.Option(
-        None, "--client-secret", help="Datacrunch client secret"
-    ),
+    client_id: Optional[str] = typer.Option(None, "--client-id", help="Datacrunch client ID"),
+    client_secret: Optional[str] = typer.Option(None, "--client-secret", help="Datacrunch client secret"),
 ):
     """Run interactive mode for guided instance selection."""
 
@@ -104,9 +103,7 @@ def run(
 
     # Step 1: File Input (mocked for now)
     console.print(Panel.fit("Step 1: Input File Selection", style="bold blue"))
-    input_file = Prompt.ask(
-        "Enter path to your notebook/script", default="notebook.ipynb"
-    )
+    input_file = Prompt.ask("Enter path to your notebook/script", default="notebook.ipynb")
     ctx.input_file = Path(input_file)
 
     # Mock file validation
@@ -121,9 +118,7 @@ def run(
 
     try:
         # Initialize the instance selection service
-        service = InstanceSelectionService(
-            client_id=client_id, client_secret=client_secret
-        )
+        service = InstanceSelectionService(client_id=client_id, client_secret=client_secret)
 
         # Ask about GPU requirements
         console.print("Let's find the right instance for your workload...")
@@ -143,28 +138,18 @@ def run(
             # CPU-only instances
             offers = service.list_all_offers()
             # Filter for CPU-only instances (no GPU)
-            offers = [
-                offer for offer in offers if offer.gpu.get("number_of_gpus", 0) == 0
-            ]
+            offers = [offer for offer in offers if offer.gpu.get("number_of_gpus", 0) == 0]
 
         if not offers:
-            console.print(
-                "[red]No suitable instances found for your requirements.[/red]"
-            )
+            console.print("[red]No suitable instances found for your requirements.[/red]")
             raise typer.Exit(1)
 
         # Ask about budget
-        budget_choice = get_arrow_key_input(
-            ["no", "yes"], "Do you have a budget limit?"
-        )
+        budget_choice = get_arrow_key_input(["no", "yes"], "Do you have a budget limit?")
         if budget_choice.lower() == "yes":
-            ctx.budget_limit = float(
-                Prompt.ask("Enter maximum hourly cost ($)", default="1.00")
-            )
+            ctx.budget_limit = float(Prompt.ask("Enter maximum hourly cost ($)", default="1.00"))
             # Filter offers by budget
-            offers = [
-                offer for offer in offers if offer.price_per_hour <= ctx.budget_limit
-            ]
+            offers = [offer for offer in offers if offer.price_per_hour <= ctx.budget_limit]
 
         if not offers:
             console.print("[red]No instances found within budget.[/red]")
@@ -188,37 +173,7 @@ def run(
             # Extract GPU info
             gpu_description = offer.gpu.get("description", "")
             gpu_count = offer.gpu.get("number_of_gpus", 0)
-
-            if gpu_description and gpu_count > 0:
-                import re
-
-                patterns = [
-                    r"(B300)\s+SXM6",
-                    r"(B200)\s+SXM6",
-                    r"(H200)\s+SXM5",
-                    r"(H100)\s+SXM5",
-                    r"(A100)\s+SXM4",
-                    r"(RTX\s+PRO)\s+6000",
-                    r"(RTX\s+6000)\s+Ada",
-                    r"(RTX\s+A6000)",
-                    r"(Tesla\s+V100)",
-                    r"(L40S)",
-                ]
-
-                gpu_type_display = "Unknown"
-                for pattern in patterns:
-                    match = re.search(pattern, gpu_description)
-                    if match:
-                        gpu_type_display = match.group(1)
-                        break
-
-                gpu_display = (
-                    f"{gpu_count}x{gpu_type_display}"
-                    if gpu_count > 1
-                    else gpu_type_display
-                )
-            else:
-                gpu_display = "CPU Only"
+            gpu_display = format_gpu_display(gpu_description, gpu_count)
 
             # Extract other specs
             cpu_count = offer.cpu.get("number_of_cores", 0)
@@ -227,10 +182,7 @@ def run(
             gpu_memory_display = f"{gpu_memory_gb}GB" if gpu_memory_gb > 0 else "-"
 
             # Calculate savings
-            savings = (
-                (offer.price_per_hour - offer.spot_price_per_hour)
-                / offer.price_per_hour
-            ) * 100
+            savings = ((offer.price_per_hour - offer.spot_price_per_hour) / offer.price_per_hour) * 100
 
             table.add_row(
                 str(i),
@@ -256,9 +208,7 @@ def run(
         ctx.selected_instance = offers[int(instance_choice) - 1]
 
         # Pricing preference
-        pricing_choice = get_arrow_key_input(
-            ["spot", "on-demand"], "Pricing preference"
-        )
+        pricing_choice = get_arrow_key_input(["spot", "on-demand"], "Pricing preference")
 
         # Summary
         console.print()
@@ -270,10 +220,7 @@ def run(
         if pricing_choice == "spot":
             hourly_cost = ctx.selected_instance.spot_price_per_hour
             savings = (
-                (
-                    ctx.selected_instance.price_per_hour
-                    - ctx.selected_instance.spot_price_per_hour
-                )
+                (ctx.selected_instance.price_per_hour - ctx.selected_instance.spot_price_per_hour)
                 / ctx.selected_instance.price_per_hour
             ) * 100
             console.print(f"💵 Cost: ${hourly_cost:.2f}/hour (saves {savings:.1f}%)")
@@ -282,15 +229,11 @@ def run(
             console.print(f"💵 Cost: ${hourly_cost:.2f}/hour")
 
         # Confirmation
-        proceed_choice = get_arrow_key_input(
-            ["yes", "no"], "Proceed with this configuration?"
-        )
+        proceed_choice = get_arrow_key_input(["yes", "no"], "Proceed with this configuration?")
         proceed = proceed_choice.lower() == "yes"
         if proceed:
             console.print("[green]✓ Configuration confirmed! Ready to proceed.[/green]")
-            console.print(
-                "[yellow]Note: This is a demo - provisioning not implemented.[/yellow]"
-            )
+            console.print("[yellow]Note: This is a demo - provisioning not implemented.[/yellow]")
         else:
             console.print("[yellow]Configuration cancelled.[/yellow]")
 

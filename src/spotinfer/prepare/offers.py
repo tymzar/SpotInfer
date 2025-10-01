@@ -13,9 +13,7 @@ from ..adapter import DatacrunchAdapter
 class InstanceSelectionService:
     """Service for instance selection and offers management."""
 
-    def __init__(
-        self, client_id: Optional[str] = None, client_secret: Optional[str] = None
-    ):
+    def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None):
         """Initialize the Datacrunch adapter."""
         self.adapter = DatacrunchAdapter(client_id, client_secret)
 

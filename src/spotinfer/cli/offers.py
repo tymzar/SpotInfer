@@ -12,29 +12,25 @@ from rich.table import Table
 from rich.text import Text
 
 from ..prepare.offers import OffersService
+from ..utils.gpu import format_gpu_display
 
 app = typer.Typer(name="offers", help="List available instance offers")
 console = Console()
 
 
+# pylint: disable=R0917
 @app.command()
-def list(
+def list_offers(
     gpu_type: Optional[str] = typer.Option(
         None,
         "--gpu-type",
         "-g",
         help="Filter by GPU type (case-insensitive, e.g., v100, RTX4090, a100)",
     ),
-    spot_only: bool = typer.Option(
-        False, "--spot", "-s", help="Show spot pricing only"
-    ),
-    cheapest: bool = typer.Option(
-        False, "--cheapest", "-c", help="Show only the cheapest offer"
-    ),
+    spot_only: bool = typer.Option(False, "--spot", "-s", help="Show spot pricing only"),
+    cheapest: bool = typer.Option(False, "--cheapest", "-c", help="Show only the cheapest offer"),
     limit: int = typer.Option(10, "--limit", "-l", help="Limit number of results"),
-    client_id: Optional[str] = typer.Option(
-        None, "--client-id", help="Datacrunch client ID (overrides env var)"
-    ),
+    client_id: Optional[str] = typer.Option(None, "--client-id", help="Datacrunch client ID (overrides env var)"),
     client_secret: Optional[str] = typer.Option(
         None, "--client-secret", help="Datacrunch client secret (overrides env var)"
     ),
@@ -63,13 +59,9 @@ def list(
                 available_types = service.get_available_gpu_types()
                 for gpu_t in available_types:
                     console.print(f"  • {gpu_t}")
-                console.print(
-                    "\n[yellow]Tip: Use spotinfer offers gpu-types to see all types[/yellow]"  # noqa: E501
-                )
+                console.print("\n[yellow]Tip: Use spotinfer offers gpu-types to see all types[/yellow]")
             else:
-                console.print(
-                    "[yellow]No offers found matching your criteria.[/yellow]"
-                )
+                console.print("[yellow]No offers found matching your criteria.[/yellow]")
             return
 
         # Create rich table
@@ -89,35 +81,7 @@ def list(
             # Extract GPU info from description
             gpu_description = offer.gpu.get("description", "")
             gpu_count = offer.gpu.get("number_of_gpus", 0)
-
-            if gpu_description and gpu_count > 0:
-                # Extract GPU type from description (e.g., "1x Tesla V100 16GB" ->
-                # "V100")
-                import re
-
-                patterns = [
-                    r"(B300)\s+SXM6",  # e.g., "B300 SXM6"
-                    r"(B200)\s+SXM6",  # e.g., "B200 SXM6"
-                    r"(H200)\s+SXM5",  # e.g., "H200 SXM5"
-                    r"(H100)\s+SXM5",  # e.g., "H100 SXM5"
-                    r"(A100)\s+SXM4",  # e.g., "A100 SXM4"
-                    r"(RTX\s+PRO)\s+6000",  # e.g., "RTX PRO 6000"
-                    r"(RTX\s+6000)\s+Ada",  # e.g., "RTX 6000 Ada"
-                    r"(RTX\s+A6000)",  # e.g., "RTX A6000"
-                    r"(Tesla\s+V100)",  # e.g., "Tesla V100"
-                    r"(L40S)",  # e.g., "L40S"
-                ]
-
-                gpu_type = "Unknown"
-                for pattern in patterns:
-                    match = re.search(pattern, gpu_description)
-                    if match:
-                        gpu_type = match.group(1)
-                        break
-
-                gpu_display = f"{gpu_count}x{gpu_type}" if gpu_count > 1 else gpu_type
-            else:
-                gpu_display = "CPU Only"
+            gpu_display = format_gpu_display(gpu_description, gpu_count)
 
             # Extract CPU and memory info
             cpu_count = offer.cpu.get("number_of_cores", 0)
@@ -137,10 +101,7 @@ def list(
             ]
 
             if not spot_only:
-                savings = (
-                    (offer.price_per_hour - offer.spot_price_per_hour)
-                    / offer.price_per_hour
-                ) * 100
+                savings = ((offer.price_per_hour - offer.spot_price_per_hour) / offer.price_per_hour) * 100
                 row.extend(
                     [
                         f"${offer.spot_price_per_hour:.2f}",
@@ -154,9 +115,7 @@ def list(
 
         # Show summary
         if len(offers) == limit and not cheapest:
-            console.print(
-                "\n[yellow]Showing first results. Use --limit to see more.[/yellow]"
-            )
+            console.print("\n[yellow]Showing first results. Use --limit to see more.[/yellow]")
 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -165,9 +124,7 @@ def list(
 
 @app.command()
 def gpu_types(
-    client_id: Optional[str] = typer.Option(
-        None, "--client-id", help="Datacrunch client ID (overrides env var)"
-    ),
+    client_id: Optional[str] = typer.Option(None, "--client-id", help="Datacrunch client ID (overrides env var)"),
     client_secret: Optional[str] = typer.Option(
         None, "--client-secret", help="Datacrunch client secret (overrides env var)"
     ),
@@ -175,9 +132,9 @@ def gpu_types(
     """List available GPU types."""
     try:
         service = OffersService(client_id=client_id, client_secret=client_secret)
-        gpu_types = service.get_available_gpu_types()
+        available_gpu_types = service.get_available_gpu_types()
 
-        if not gpu_types:
+        if not available_gpu_types:
             console.print("[yellow]No GPU types found.[/yellow]")
             return
 
@@ -185,7 +142,7 @@ def gpu_types(
         text = Text("Available GPU Types:", style="bold")
         console.print(text)
 
-        for gpu_type in gpu_types:
+        for gpu_type in available_gpu_types:
             console.print(f"  • {gpu_type}")
 
     except Exception as e:

@@ -18,21 +18,13 @@ app = typer.Typer(
 
 # Add subcommands
 app.add_typer(offers_app, name="offers", help="List available instance offers")
-app.add_typer(
-    interactive_app, name="interactive", help="Interactive mode for guided setup"
-)
+app.add_typer(interactive_app, name="interactive", help="Interactive mode for guided setup")
 
 
 @app.command()
 def version():
     """Show version and exit."""
     typer.echo(f"SpotInfer {__version__}")
-
-
-@app.callback()
-def main():
-    """SpotInfer - GPU instance management for ML workloads."""
-    pass
 
 
 def cli():
