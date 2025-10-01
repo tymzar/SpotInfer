@@ -1,0 +1,69 @@
+---
+alwaysApply: true
+---
+
+# Cursor Rule Card — stopinfer
+
+**Context**
+
+- Project type: Python CLI **and** importable library (already exists).
+- Environment: managed **only** with Poetry.
+- Python targets: **primary 3.10**; maintain compatibility with **3.11–3.13**.
+- Tests location: **/tests** (repo root).
+
+---
+
+## Directives
+
+**MUST**
+
+- Treat Python **3.10** as the source of truth for syntax and features.
+- Keep compatibility with **3.11, 3.12, 3.13** (avoid version-exclusive features unless guarded).
+- Use **Poetry** exclusively for dependencies and environment; do not introduce alternate managers or requirement files.
+- Ensure the repository passes the full lint/format/type/security suite via **pre-commit run --all-files** before considering work complete.
+- Place unit tests for all **pure logic** functions (not requiring external libraries/services) in **/tests**.
+- Keep the CLI as a **thin** layer that delegates to library functions (no duplicated logic).
+- Preserve existing modules; **do not scaffold or overwrite** without explicit instruction.
+
+**SHOULD**
+
+- Add or modify logic in core modules first; integrate with the CLI only after logic is covered by tests.
+- Provide type hints for public interfaces and follow standard style conventions.
+- Mock I/O and external integrations in tests; keep tests fast and deterministic.
+- Document any public behavior changes in README/API docs.
+
+**MAY**
+
+- Introduce new runtime dependencies only with clear justification; manage them via Poetry and document the rationale.
+
+---
+
+## Quality Gate (before merge)
+
+1. Repository passes **pre-commit** across all files.
+2. All tests in **/tests** pass locally for Python **3.10–3.13**.
+3. New or changed logic includes corresponding unit tests.
+
+---
+
+## Structure Expectations
+
+- Core business logic isolated from I/O/integrations.
+- CLI wires options/flags to existing library entry points.
+- No global state that harms determinism or testability.
+
+---
+
+## Versioning & Stability
+
+- Follow semantic versioning for public API/CLI changes.
+- Keep CLI entry points and library imports stable across minor releases.
+
+---
+
+**Non-negotiables**
+
+- Poetry is the **single source of truth** for env/deps.
+- Python **3.10** primary; **3.11–3.13** supported.
+- Full-repo **pre-commit run --all-files** must pass.
+- All pure logic functions tested in **/tests**.
